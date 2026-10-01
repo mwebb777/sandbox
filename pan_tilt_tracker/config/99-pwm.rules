@@ -1,0 +1,13 @@
+# Example udev rule so the application does not need to run as root.
+# Copy to /etc/udev/rules.d/99-pwm.rules then:
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger
+#
+# Adjust the GROUP or use MODE="0666" if preferred.
+
+SUBSYSTEM=="pwm", ACTION=="add", RUN+="/bin/chgrp gpio /sys%p/period /sys%p/duty_cycle /sys%p/enable /sys%p/polarity"
+SUBSYSTEM=="pwm", ACTION=="add", RUN+="/bin/chmod g+w /sys%p/period /sys%p/duty_cycle /sys%p/enable /sys%p/polarity"
+
+# Also ensure the gpio group exists and your user is a member:
+#   sudo groupadd -f gpio
+#   sudo usermod -aG gpio $USER
