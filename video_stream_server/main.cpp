@@ -290,6 +290,36 @@ int main(int argc, char *argv[])
                  cursor: pointer; transition: background 0.2s; }
         button:hover { background: #106ebe; }
         button:active { background: #005a9e; }
+
+        .joystick-container {
+          text-align: center;
+        }
+        .joystick {
+          width: 180px;
+          height: 180px;
+          background: radial-gradient(circle at 50% 50%, #334155, #1e2937);
+          border: 6px solid #64748b;
+          border-radius: 50%;
+          position: relative;
+          margin: 0 auto;
+          box-shadow: inset 0 8px 16px rgba(0,0,0,0.5);
+          touch-action: none;
+        }
+        .joystick-knob {
+          width: 60px;
+          height: 60px;
+          background: radial-gradient(circle at 40% 40%, #e0f2fe, #3b82f6);
+          border: 4px solid #1e40af;
+          border-radius: 50%;
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+          transition: transform 0.05s linear;
+        }
+
+
         #status { margin-top: 1.2rem; font-size: 1.1rem; color: #8f8; min-height: 1.5em; }
     </style>
 </head>
@@ -307,9 +337,108 @@ int main(int argc, char *argv[])
     <button id="btn">Click Me!</button>
     <div id="btnStatus">Clicks: 0</div>
 
+    <div class="joystick-container">
+      <div id="joystick" class="joystick">
+        <div id="knob" class="joystick-knob"></div>
+      </div>
+      <div style="margin-top:8px; font-size:0.9rem; color:#94a3b8;">Joystick</div>
+    </div>
+
     <script>
+        const joystick = document.getElementById('joystick');
         const btn = document.getElementById('btn');
         const btnStatus = document.getElementById('btnStatus');
+        const statusEl = document.getElementById('status');
+        let isDragging = false;
+        let centerX = 90, centerY = 90;
+        let lastSent = 0;
+
+
+        function updateKnob(clientX, clientY) {
+          const rect = joystick.getBoundingClientRect();
+          let dx = clientX - (rect.left + centerX);
+          let dy = clientY - (rect.top + centerY);
+
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          const maxDist = 65;
+
+          if (dist > maxDist) {
+            dx = (dx / dist) * maxDist;
+            dy = (dy / dist) * maxDist;
+          }
+
+          knob.style.transform = `translate(${dx-30}px, ${dy-30}px)`;
+
+          // Normalize to -1.0 ... 1.0
+          const normX = Math.max(-1, Math.min(1, dx / maxDist));
+          const normY = Math.max(-1, Math.min(1, dy / maxDist));
+
+          const now = Date.now();
+          if (now - lastSent > 50) {  // throttle to ~20Hz
+            lastSent = now;
+            fetch('/joystick', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                x: parseFloat(normX.toFixed(3)),
+                y: parseFloat(normY.toFixed(3)),
+                timestamp: now
+              })
+            }).catch(() => {});
+          }
+        }
+
+
+        // Mouse support
+        joystick.addEventListener('mousedown', e => { isDragging = true; updateKnob(e.clientX, e.clientY); });
+        window.addEventListener('mouseup', () => {
+          if (isDragging) {
+            isDragging = false;
+            knob.style.transform = 'translate(-50%, -50%)';
+            sendCenter();
+          }
+        });
+        window.addEventListener('mousemove', e => {
+          if (isDragging) updateKnob(e.clientX, e.clientY);
+        });
+
+        // Touch support
+        joystick.addEventListener('touchstart', e => {
+          isDragging = true;
+          e.preventDefault();
+          const t = e.touches[0];
+          updateKnob(t.clientX, t.clientY);
+        }, {passive: false});
+
+        joystick.addEventListener('touchmove', e => {
+          if (!isDragging) return;
+          e.preventDefault();
+          const t = e.touches[0];
+          updateKnob(t.clientX, t.clientY);
+        }, {passive: false});
+
+        joystick.addEventListener('touchend', () => {
+          if (isDragging) {
+            isDragging = false;
+            knob.style.transform = 'translate(-50%, -50%)';
+            sendCenter();
+          }
+        });
+
+        function sendCenter() {
+          fetch('/joystick', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ x: 0, y: 0, timestamp: Date.now() })
+          });
+        }
+
+
+
+
+
+
+
 
         btn.addEventListener('click', async () => {
             try {
@@ -399,6 +528,15 @@ int main(int argc, char *argv[])
             }
             setTimeout(() => selDiv.style.display = 'none', 250);
         });
+
+
+
+        // Show status when joystick moves
+        setInterval(() => {
+          if (statusEl.textContent.includes('Joystick')) return;
+          statusEl.style.opacity = 0.6;
+        }, 3000);
+
     </script>
 </body>
 </html>
@@ -429,6 +567,23 @@ int main(int argc, char *argv[])
                      int clicks = ++g_clickCounter;
                      return QHttpServerResponse(QJsonObject{{"clicks", clicks}});
                  });
+
+    // Joystick handler (new)
+    server.route("/joystick", [](const QHttpServerRequest &req) {
+        const QByteArray body = req.body();
+        qInfo().noquote() << "[JOYSTICK]" << QDateTime::currentDateTime().toString(Qt::ISODate)
+                          << "from" << req.remoteAddress().toString()
+                          << "data:" << (body.isEmpty() ? "(empty)" : QString::fromUtf8(body));
+        return QHttpServerResponse("text/plain", "Joystick event received");
+    });
+
+    // Allow GET for testing
+    server.route("/joystick", QHttpServerRequest::Method::Get, [](const QHttpServerRequest &req) {
+        qInfo().noquote() << "[JOYSTICK-GET]" << QDateTime::currentDateTime().toString(Qt::ISODate)
+                          << "from" << req.remoteAddress().toString();
+        return QHttpServerResponse("text/plain", "Joystick endpoint ready");
+    });
+
 
     // ---------- Selection endpoint ----------
     server.route("/select", QHttpServerRequest::Method::Post,

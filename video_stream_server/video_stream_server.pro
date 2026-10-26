@@ -20,10 +20,10 @@ linux-g++: {
 }
 
 win32: {
-        INCLUDEPATH += d:\cots\opencv\include
+        INCLUDEPATH += c:\cots\opencv\v450\include
 
-        LIBS += -Ld:\cots\opencv\x64\vc16\lib \
-                -lopencv_world4100d
+        LIBS += -Lc:\cots\opencv\v450\lib\x64 \
+                -lopencv_world450d
 }
 
 HEADERS +=
