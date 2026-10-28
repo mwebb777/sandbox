@@ -1,4 +1,4 @@
-QT = core network gui httpserver websockets
+QT = core network gui
 
 CONFIG += c++17 console
 
@@ -17,6 +17,7 @@ linux-g++: {
                 -lopencv_highgui \
                 -lopencv_imgcodecs \
                 -lopencv_videoio
+
 }
 
 win32: {

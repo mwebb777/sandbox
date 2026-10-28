@@ -1,42 +1,53 @@
 #include <opencv2/opencv.hpp>
+
+#include <cstdio>
 #include <iostream>
+#include <vector>
 
 int main() {
-    // Open the default camera (device index 0)
-    cv::VideoCapture cap(0);
+    constexpr int width = 640;
+    constexpr int height = 480;
+    const std::size_t frameSize = width * height * 3 / 2; // YUV420
 
-    if (!cap.isOpened()) {
-        std::cerr << "Error: Could not open webcam." << std::endl;
-        return -1;
+    // rpicam-vid writes raw YUV420 frames to stdout.
+    const char* command =
+        "rpicam-vid -t 0 --nopreview "
+        "--width 640 --height 480 --framerate 30 "
+        "--codec yuv420 -o -";
+
+    FILE* camera = popen(command, "r");
+    if (!camera) {
+        std::cerr << "Could not start rpicam-vid\n";
+        return 1;
     }
 
-    // Optional: set resolution (comment out if you want the camera default)
-    // cap.set(cv::CAP_PROP_FRAME_WIDTH, 1280);
-    // cap.set(cv::CAP_PROP_FRAME_HEIGHT, 720);
+    std::vector<unsigned char> buffer(frameSize);
 
-    cv::Mat frame;
-    const std::string windowName = "Webcam Viewer";
-    cv::namedWindow(windowName, cv::WINDOW_AUTOSIZE);
-
-    std::cout << "Press ESC to quit." << std::endl;
+    cv::namedWindow("Camera", cv::WINDOW_AUTOSIZE);
 
     while (true) {
-        if (!cap.read(frame) || frame.empty()) {
-            std::cerr << "Error: Failed to capture frame." << std::endl;
+        // Read one complete YUV420 frame.
+        const std::size_t bytesRead =
+            fread(buffer.data(), 1, frameSize, camera);
+
+        if (bytesRead != frameSize) {
+            std::cerr << "Could not read a complete frame\n";
             break;
         }
 
-        cv::imshow(windowName, frame);
+        // YUV420 (I420) to OpenCV's usual BGR format.
+        cv::Mat yuv(height * 3 / 2, width, CV_8UC1, buffer.data());
+        cv::Mat bgr;
+        cv::cvtColor(yuv, bgr, cv::COLOR_YUV2BGR_I420);
 
-        // Wait 1 ms and check for ESC key (ASCII 27)
-        if (cv::waitKey(1) == 27) {
+        cv::imshow("Camera", bgr);
+
+        if (cv::waitKey(1) == 27) { // Esc to quit
             break;
         }
     }
 
-    // Cleanup
-    cap.release();
+    pclose(camera);
     cv::destroyAllWindows();
-
     return 0;
 }
