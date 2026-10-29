@@ -21,7 +21,7 @@ enum Direction {
 void turn_step(int handle, Direction dir, int steps, int step_delay_us) {
     // Set direction pin value: 0 for FORWARD, 1 for BACKWARD
     lgGpioWrite(handle, M1_DIR_PIN, static_cast<int>(dir));
-    lgGpioWrite(handle, M2_DIR_PIN, static_cast<int>(dir));
+  //  lgGpioWrite(handle, M2_DIR_PIN, static_cast<int>(dir));
 
     std::cout << "Moving " << (dir == FORWARD ? "Forward" : "Backward")
               << " for " << steps << " steps..." << std::endl;
@@ -29,10 +29,10 @@ void turn_step(int handle, Direction dir, int steps, int step_delay_us) {
     // Generate step pulses
     for (int i = 0; i < steps; ++i) {
         lgGpioWrite(handle, M1_STEP_PIN, 1); // Pulse HIGH
-        lgGpioWrite(handle, M2_STEP_PIN, 1); // Pulse HIGH
+  //      lgGpioWrite(handle, M2_STEP_PIN, 1); // Pulse HIGH
         usleep(step_delay_us);
         lgGpioWrite(handle, M1_STEP_PIN, 0); // Pulse LOW
-        lgGpioWrite(handle, M2_STEP_PIN, 0); // Pulse LOW
+  //      lgGpioWrite(handle, M2_STEP_PIN, 0); // Pulse LOW
         usleep(step_delay_us);
     }
 }

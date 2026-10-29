@@ -5,7 +5,8 @@
 
 // On Raspberry Pi 5, the main 40-pin header maps to gpiochip4
 const int GPIO_CHIP = 4;
-const int BUTTON_PIN = 23; // Broadcom (BCM) 16
+const int BUTTON_PIN = 22; // Broadcom (BCM) 16
+//const int BUTTON_PIN = 27; // Broadcom (BCM) 16
 
 int main() {
     // 1. Open the GPIO chip
