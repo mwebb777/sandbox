@@ -4,7 +4,8 @@
 #include <lgpio.h> // Include the C lgpio header
 
 // On Raspberry Pi 5, the main 40-pin header maps to gpiochip4
-const int GPIO_CHIP = 4;
+// On Raspberry Pi 4, the main 40-pin header maps to gpiochip0
+const int GPIO_CHIP = 0;
 const int BUTTON_PIN = 22; // Broadcom (BCM) 16
 //const int BUTTON_PIN = 27; // Broadcom (BCM) 16
 

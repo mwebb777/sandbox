@@ -1,4 +1,4 @@
-build
+build*
 !scripts/build
 vs2015-win64
 vs2015_win32
